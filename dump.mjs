@@ -17,7 +17,7 @@ function readlinePromise(question, options = []) {
         resolve(input);
       } else {
         console.log(
-          `${input} is not an acceptable answer, acceptable answer are : ${options.join(
+          `${input} n'est pas acceptable, les réponses acceptables sont : ${options.join(
             ", "
           )}`
         );
@@ -88,7 +88,7 @@ function extractUserFromSearch(search) {
         return games[0];
       }
       return readlinePromise(
-        "Which one ? ",
+        "Que jeu ? ",
         Array.from(Array(games.length).keys())
       ).then((index) => games[index]);
     })
