@@ -2,7 +2,7 @@ import fetch from "node-fetch";
 import { JSDOM } from "jsdom";
 import readline from "readline";
 
-function readlinePromise(question) {
+function readlinePromise(question, options = []) {
   const rl = readline.createInterface({
     input: process.stdin,
     output: process.stdout,
@@ -11,7 +11,18 @@ function readlinePromise(question) {
   return new Promise((resolve, reject) => {
     rl.question(question, (input) => {
       rl.close();
-      resolve(input);
+      if (options.length === 0) {
+        resolve(input);
+      } else if (options.includes(Number(input))) {
+        resolve(input);
+      } else {
+        console.log(
+          `${input} is not an acceptable answer, acceptable answer are : ${options.join(
+            ", "
+          )}`
+        );
+        resolve(readlinePromise(question, options));
+      }
     });
   });
 }
@@ -19,7 +30,7 @@ function readlinePromise(question) {
 const searchGameUrl = "https://www.okkazeo.com/jeux/searchJeux?rech_nom=";
 
 function http(url, callback) {
-  console.log("fetching", url);
+  //console.log("fetching", url);
   return fetch(url)
     .then((response) => response.text())
     .then(callback);
@@ -60,8 +71,6 @@ function extractUserFromAnnoncePage(html) {
   );
 }
 
-const search = process.argv[2];
-
 function extractUserFromSearch(search) {
   return http(
     `https://www.okkazeo.com/jeux/searchJeux?rech_nom=}${search}`,
@@ -78,7 +87,10 @@ function extractUserFromSearch(search) {
       if (games.length === 1) {
         return games[0];
       }
-      return readlinePromise("Which one ? ").then((index) => games[index]);
+      return readlinePromise(
+        "Which one ? ",
+        Array.from(Array(games.length).keys())
+      ).then((index) => games[index]);
     })
     .then(({ url }) => http(url, extractAnnoncePages))
     .then((urls) =>
@@ -88,8 +100,34 @@ function extractUserFromSearch(search) {
         )
       )
     )
-    .then((arr) => arr.flat())
-    .then(console.log); // TODO ask user for selection
+    .then((arr) => arr.flat());
 }
 
-await extractUserFromSearch(search);
+const users = new Set(
+  await readlinePromise("Quel jeu souhaitez vous chercher ? ").then((search) =>
+    extractUserFromSearch(search)
+  )
+);
+
+if (users.length === 0) {
+  console.log("Ce jeu n'est pas à vendre");
+} else {
+  const others = new Set(
+    await readlinePromise("Quel autre jeu souhaitez vous chercher ? ").then(
+      (search) => extractUserFromSearch(search)
+    )
+  );
+  const result = insersection(users, others);
+  if (result.length === 0) {
+    console.log("Aucun membre ne vend tous ces jeux");
+  } else {
+    console.log(`${result.length} utilisateur(s) trouvé(s) :`);
+    console.log(
+      result.map((user) => `https://www.okkazeo.com${user}`).join("\n")
+    );
+  }
+}
+
+function insersection(set1, set2) {
+  return [...set1].filter((el) => set2.has(el));
+}
