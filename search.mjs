@@ -144,9 +144,8 @@ function insersection(users1, users2) {
     if (map.has(user)) {
       let currPrice = map.get(user).price;
       acc.set(user, { price: currPrice + price, count: 2 });
-
-      return acc;
     }
+    return acc;
   }, map);
 
   return [...map.entries()]
