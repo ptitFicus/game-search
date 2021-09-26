@@ -66,14 +66,21 @@ function extractAnnoncePages(html) {
 
 function extractUserFromAnnoncePage(html) {
   const dom = new JSDOM(html);
-  return [...dom.window.document.querySelectorAll(".lien_membre .membre")].map(
-    (a) => a.href
+  return [...dom.window.document.querySelectorAll(".mbs article")].map(
+    (article) => {
+      const user = article.querySelector(".lien_membre .membre").href;
+      const price = Number(
+        article.querySelector(".prix").textContent.replace("€", ".")
+      );
+
+      return { user, price };
+    }
   );
 }
 
 function extractUserFromSearch(search) {
   return http(
-    `https://www.okkazeo.com/jeux/searchJeux?rech_nom=}${search}`,
+    `https://www.okkazeo.com/jeux/searchJeux?rech_nom=${search}`,
     extractSearchResults
   )
     .then((games) => {
@@ -103,31 +110,46 @@ function extractUserFromSearch(search) {
     .then((arr) => arr.flat());
 }
 
-const users = new Set(
-  await readlinePromise("Quel jeu souhaitez vous chercher ? ").then((search) =>
-    extractUserFromSearch(search)
-  )
+const users = await readlinePromise("Quel jeu souhaitez vous chercher ? ").then(
+  (search) => extractUserFromSearch(search)
 );
 
 if (users.length === 0) {
   console.log("Ce jeu n'est pas à vendre");
 } else {
-  const others = new Set(
-    await readlinePromise("Quel autre jeu souhaitez vous chercher ? ").then(
-      (search) => extractUserFromSearch(search)
-    )
-  );
+  const others = await readlinePromise(
+    "Quel autre jeu souhaitez vous chercher ? "
+  ).then((search) => extractUserFromSearch(search));
+
   const result = insersection(users, others);
   if (result.length === 0) {
     console.log("Aucun membre ne vend tous ces jeux");
   } else {
     console.log(`${result.length} utilisateur(s) trouvé(s) :`);
     console.log(
-      result.map((user) => `https://www.okkazeo.com${user}`).join("\n")
+      result
+        .map(({ user, price }) => `https://www.okkazeo.com${user} (${price} €)`)
+        .join("\n")
     );
   }
 }
 
-function insersection(set1, set2) {
-  return [...set1].filter((el) => set2.has(el));
+function insersection(users1, users2) {
+  let map = users1.reduce((acc, { user, price }) => {
+    acc.set(user, { price, count: 1 });
+    return acc;
+  }, new Map());
+
+  map = users2.reduce((acc, { user, price }) => {
+    if (map.has(user)) {
+      let currPrice = map.get(user).price;
+      acc.set(user, { price: currPrice + price, count: 2 });
+
+      return acc;
+    }
+  }, map);
+
+  return [...map.entries()]
+    .filter(([user, { count, price }]) => count >= 2)
+    .map(([user, { count, price }]) => ({ user, price }));
 }
