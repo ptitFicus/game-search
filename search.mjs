@@ -41,10 +41,12 @@ function extractSearchResults(html) {
   return [...dom.window.document.querySelectorAll("a")]
     .filter((a) => a.title.includes("Voir les jeux"))
     .filter((a) => !a.classList.contains("button"))
-    .map((a) => ({
-      name: a.textContent,
-      url: `https://www.okkazeo.com${a.href}`,
-    }));
+    .map((a) => {
+      return {
+        name: a.querySelector("h4").textContent,
+        url: `https://www.okkazeo.com${a.href}`,
+      };
+    });
 }
 
 function extractAnnoncePages(html) {
@@ -57,7 +59,7 @@ function extractAnnoncePages(html) {
       .split(" ")[0]
   );
 
-  return [...dom.window.document.querySelectorAll(".mbs div.small-3")]
+  return [...dom.window.document.querySelectorAll(".mbs.cell")]
     .splice(0, editionCount)
     .filter((p) => p.textContent.includes("A partir de"))
     .map((p) => p.querySelector("a"))
@@ -99,7 +101,9 @@ function extractUserFromSearch(search) {
         Array.from(Array(games.length).keys())
       ).then((index) => games[index]);
     })
-    .then(({ url }) => http(url, extractAnnoncePages))
+    .then(({ url }) => {
+      return http(url, extractAnnoncePages);
+    })
     .then((urls) =>
       Promise.all(
         urls.map((url) =>
